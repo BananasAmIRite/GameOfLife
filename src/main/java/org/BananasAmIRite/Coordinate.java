@@ -3,8 +3,8 @@ package org.BananasAmIRite;
 import java.util.Objects;
 
 public class Coordinate {
-    private int x;
-    private int y;
+    private final int x;
+    private final int y;
     public Coordinate(int x, int y) {
         this.x = x;
         this.y = y;
@@ -29,5 +29,12 @@ public class Coordinate {
     @Override
     public int hashCode() {
         return Objects.hash(x, y);
+    }
+
+    @Override
+    public String toString() {
+        return "Coordinate(" + x +
+                ", " + y +
+                ')';
     }
 }

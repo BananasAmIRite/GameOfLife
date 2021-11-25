@@ -25,14 +25,6 @@ public class GameControlFrame extends JFrame {
         JLabel bitSizeYLabel = new JLabel("Bit Size Y: ");
         JLabel generationTimeLabel = new JLabel("Generation Time: ");
 
-//        this.add(bitSizeXLabel);
-//        this.add(this.bitSizeXField);
-//        this.add(bitSizeYLabel);
-//        this.add(this.bitSizeYField);
-//        this.add(this.applyBtn);
-//        this.add(this.startBtn);
-//        this.add(this.stopBtn);
-
         // layout and grouping components
         GroupLayout layout = new GroupLayout(this.getContentPane());
 

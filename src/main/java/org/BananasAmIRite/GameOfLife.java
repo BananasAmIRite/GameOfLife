@@ -5,18 +5,17 @@ import java.awt.*;
 
 public class GameOfLife {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         JFrame mainFrame = new JFrame();
 
         Dimension size = new Dimension(500, 500);
 
         mainFrame.setSize(size);
 
-        GameCanvas canvas = new GameCanvas((int)size.getWidth(), (int)size.getHeight(), new Dimension(10, 10));
+        GameCanvas canvas = new GameCanvas((int)size.getWidth(), (int)size.getHeight(), new Dimension(50, 50));
 
         JFrame controlFrame = new GameControlFrame(canvas);
 
-        System.out.println(canvas.getMap());
 
         mainFrame.add(canvas);
 

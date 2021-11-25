@@ -1,70 +1,63 @@
 package org.BananasAmIRite;
 
 import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.util.*;
 import java.util.List;
 
-public class GameCanvas extends Canvas implements MouseListener {
-    private List<List<Bit>> map;
+public class GameCanvas extends Canvas {
     private Dimension bitSize;
     private boolean generationStarting = false;
     private int generationTime = 250;
-    private GameCanvasThread currentThread;
+    private final GameCanvasMouseAdapter mouseAdapter;
+
+    private int offsetX = 10;
+    private int offsetY = 10;
+
+    private List<Coordinate> litUpPoints;
 
     public GameCanvas(int sizeX, int sizeY) {
         super(sizeX, sizeY);
         this.bitSize = new Dimension(50, 50);
-        this.addMouseListener(this);
+        this.mouseAdapter = new GameCanvasMouseAdapter(this);
         this.init();
     }
 
     public GameCanvas(int sizeX, int sizeY, Dimension bitSize) {
         super(sizeX, sizeY);
         this.bitSize = bitSize;
-        this.addMouseListener(this);
+        this.mouseAdapter = new GameCanvasMouseAdapter(this);
         this.init();
     }
 
     private void init() {
-        // TODO: revamp the whole thing so that the canvas only stores lit up coordinates
-        //  (eg. [(0, 0), (1, 0)] for 2 points lit up next to each other in the top left corner).
-        //  this will be used for an infinite grid.
-        //  ~~ The renderer will need to translate the points into an arraylist of arraylists each time though. ~~
-        //  ^^ outdated imma use diff idea
-        //  The renderer will calculate the amountOfBitRows, amountOfBitCols, shown under, loop through that
-        //  if a tuple containing the coordinates are not in the array, then don't light up, if yes, then light up.
-        //  -
-        //  For generation logic, go through SHIT THIS WONT WORK CUZ HOW DO I DETECT DEAD CELLS
-        //  ACTUALLY, I could loop through each lighted up point, which I have, then find each surrounding cell.
-        //   For each surrounding cell, if its dead, then test the Any dead cell with 3 neighbors will come back
-        //   to life, else, don't do anything.
-        //  Test everything else for that cell.
-        //  --
-        //  I AM SO SMART!
-        map = new ArrayList<>();
+        this.addMouseListener(mouseAdapter);
+        this.addMouseMotionListener(mouseAdapter);
+        this.addMouseWheelListener(mouseAdapter);
 
-        int amountOfBitRows = (int) Math.ceil(imageWidth / bitSize.getWidth());
-        int amountOfBitCols = (int) Math.ceil(imageHeight / bitSize.getHeight());
-
-        for (int y = 0; y < amountOfBitCols; y++) {
-            List<Bit> bitRow = new ArrayList<>();
-            for (int x = 0; x < amountOfBitRows; x++) {
-                Bit bit = new Bit();
-                bitRow.add(bit);
-            }
-            map.add(bitRow);
-        }
+        litUpPoints = new ArrayList<>();
 
         this.repaint();
     }
 
-    public final Bit getBit(int x, int y) {
-        try {
-            return map.get(y).get(x);
-        } catch(IndexOutOfBoundsException err) {
-            return null;
+    public final LitResponse isLitUp(int x, int y) {
+        return isLitUp(new Coordinate(x, y));
+    }
+
+    public final LitResponse isLitUp(Coordinate c) {
+        return new LitResponse(this.litUpPoints.contains(c), new Coordinate(c.getX(), c.getY()));
+    }
+
+    public final void flipBit(int x, int y) {
+        flipBit(new Coordinate(x, y));
+    }
+
+    public final void flipBit(Coordinate c) {
+        LitResponse isLit = this.isLitUp(c);
+
+        if (isLit.getResponse()) {
+            this.litUpPoints.remove(c);
+        } else {
+            this.litUpPoints.add(c);
         }
     }
 
@@ -72,10 +65,19 @@ public class GameCanvas extends Canvas implements MouseListener {
         return generationStarting;
     }
 
+    public Dimension getBitSize() {
+        return bitSize;
+    }
+
     public void setBitSize(Dimension bitSize) {
+        setBitSize(bitSize, true);
+    }
+
+    public void setBitSize(Dimension bitSize, boolean repaint) {
+        if (bitSize.getWidth() < 5 || bitSize.getHeight() < 5) return;
         this.bitSize = bitSize;
-        // refresh EVERYTHING cuz we need to
-        this.init();
+
+        if (repaint) this.repaint();
     }
 
     public final void setGenerationTime(int time) {
@@ -86,29 +88,45 @@ public class GameCanvas extends Canvas implements MouseListener {
         return generationTime;
     }
 
-    public final List<List<Bit>> getMap() {
-        return map;
-    }
-
     @Override
     public void draw(Graphics g) {
+
+        int LINE_WIDTH = 1;
+
         // white bg
         g.setColor(Color.GRAY);
         g.fillRect(0, 0, this.imageWidth, this.imageHeight);
-        for (int y = 0; y < map.size(); y++) {
-            for (int x = 0; x < map.get(0).size(); x++) {
-                Bit bit = getBit(x, y);
-                if (bit == null) continue;
+
+        int amountOfBitRows = (int) (Math.ceil(imageWidth / bitSize.getWidth()) + Math.ceil(Math.abs(this.offsetX) / bitSize.getWidth()));
+        int amountOfBitCols = (int) (Math.ceil(imageHeight / bitSize.getHeight()) + Math.ceil(Math.abs(this.offsetY) / bitSize.getHeight()));
+
+        int startingBitX = (int) Math.floor(this.offsetX / bitSize.getWidth());
+        int startingBitY = (int) Math.floor(this.offsetY / bitSize.getHeight());
+
+        int bitMinusX = (int) (this.offsetX == 0 ? 0 : this.offsetX > 0 ?
+                (this.offsetX % bitSize.getWidth())
+                : Math.abs(this.offsetX) % bitSize.getWidth() == 0 ? 0
+                : bitSize.getWidth() - (Math.abs(this.offsetX) % bitSize.getWidth()));
+        int bitMinusY = (int) (this.offsetY == 0 ? 0 : this.offsetY > 0 ?
+                (this.offsetY % bitSize.getHeight())
+                : Math.abs(this.offsetY) % bitSize.getHeight() == 0 ? 0
+                : bitSize.getHeight() - (Math.abs(this.offsetY) % bitSize.getHeight())
+                );
+
+        for (int y = startingBitY; y < amountOfBitCols + startingBitY; y++) {
+            for (int x = startingBitX; x < amountOfBitRows + startingBitX; x++) {
+                LitResponse isBitLit = this.isLitUp(x, y);
 
                 // bit draw locations:
                 // ------
-                Coordinate bitDrawLocationStart = new Coordinate((int)(x*this.bitSize.getWidth()), (int)(y*this.bitSize.getHeight()));
-                // Coordinate bitDrawLocationEnd = new Coordinate((int)((x+1)*this.bitSize.getWidth()), (int)((y+1)*this.bitSize.getHeight()));
+                Coordinate bitDrawLocationStart = new Coordinate(
+                        (int)((x-startingBitX)*this.bitSize.getWidth()-bitMinusX),
+                        (int)((y-startingBitY)*this.bitSize.getHeight()-bitMinusY));
                 // ------
 
-                g.setColor(bit.isLit() ? Color.WHITE : Color.BLACK);
+                g.setColor(isBitLit.getResponse() ? Color.WHITE : Color.BLACK);
 
-                g.fillRect(bitDrawLocationStart.getX(), bitDrawLocationStart.getY(), (int) this.bitSize.getWidth()-1, (int) this.bitSize.getHeight()-1);
+                g.fillRect(bitDrawLocationStart.getX(), bitDrawLocationStart.getY(), (int) this.bitSize.getWidth()- LINE_WIDTH, (int) this.bitSize.getHeight()- LINE_WIDTH);
             }
         }
     }
@@ -118,96 +136,82 @@ public class GameCanvas extends Canvas implements MouseListener {
         if (this.generationStarting) return;
 
         this.generationStarting = true;
-        // deprecated: moved to GameCanvasThread
-//        while (this.generationStarting) {
-//            runGeneration();
-//            this.repaint();
-//            Thread.sleep(this.generationTime);
-//        }
 
-        // if (this.currentThread != null) this.currentThread.interrupt();
-
-        this.currentThread = new GameCanvasThread(this);
-        this.currentThread.start();
+        Thread t = new GameCanvasThread(this);
+        t.start();
     }
 
     public final void stop() {
         this.generationStarting = false;
     }
 
-    @Override
-    public void mouseClicked(MouseEvent e) {
-
-    }
-
-    @Override
-    public void mousePressed(MouseEvent e) {
-        // get the exact bit that we clicked :D
-        int clickedRow = (int) Math.floor(e.getY()/bitSize.getHeight());
-        int clickedCol = (int) Math.floor(e.getX()/bitSize.getWidth());
-
-        Bit bit = getBit(clickedCol, clickedRow);
-
-        if (bit == null) return;
-
-        // System.out.println("Bit we clicked is " + (bit.isLit() ? "FLIPPED" : "NOT FLIPPED") + "!");
-
-        bit.flip();
-
-        this.repaint();
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-
-    }
-
-    @Override
-    public void mouseEntered(MouseEvent e) {
-
-    }
-
-    @Override
-    public void mouseExited(MouseEvent e) {
-
-    }
 
     public final void runGeneration() {
-        List<Bit> changes = new ArrayList<>();
+        List<Coordinate> changes = new ArrayList<>();
 
-        for (int y = 0; y < map.size(); y++) {
-            for (int x = 0; x < map.get(0).size(); x++) {
-                Bit bit = getBit(x, y);
+        for (Coordinate litBit : this.litUpPoints) {
+            Set<LitResponse> neighbors = getNeighbors(litBit);
+            int sumOfAliveNeighbors = 0;
 
-                Bit topLeft = getBit(x-1, y-1);
-                Bit top = getBit(x, y-1);
-                Bit topRight = getBit(x+1, y-1);
-                Bit middleLeft = getBit(x-1, y);
-                Bit middleRight = getBit(x+1, y);
-                Bit bottomLeft = getBit(x-1, y+1);
-                Bit bottom = getBit(x, y+1);
-                Bit bottomRight = getBit(x+1, y+1);
-                Set<Bit> neighbors = new HashSet<>(Arrays.asList(topLeft, top, topRight, middleLeft, middleRight, bottomLeft, bottom, bottomRight));
-                int sumOfAliveNeighbors = 0;
+            for (LitResponse neighbor : neighbors) {
+                if (!neighbor.getResponse()) continue;
+                sumOfAliveNeighbors++;
+            }
 
-                for (Bit neighbor : neighbors) {
-                    if (neighbor == null || !neighbor.isLit()) continue;
-                    sumOfAliveNeighbors++;
+            if (sumOfAliveNeighbors != 2 && sumOfAliveNeighbors != 3) {
+                // kill the bit
+                changes.add(litBit);
+            }
+
+            // now we test each neighbor
+            for (LitResponse neighborBit : neighbors) {
+                if (neighborBit.getResponse()) continue; // we ONLY want dead cells
+
+                Set<LitResponse> neighborNeighbors = getNeighbors(neighborBit.getCoordinates());
+                int sumOfAliveNeighborNeighbors = 0;
+
+                for (LitResponse neighborNeighbor : neighborNeighbors) {
+                    if (!neighborNeighbor.getResponse()) continue;
+                    sumOfAliveNeighborNeighbors++;
                 }
 
-                if (bit != null && bit.isLit()) {
-                    // bit is lit, lets use the rules :D
-                    if (sumOfAliveNeighbors == 2 || sumOfAliveNeighbors == 3) continue;
-                    changes.add(bit);
-                } else {
-                    // bit is dead, lets still use the rules :D
-                    if (sumOfAliveNeighbors == 3) changes.add(bit);
-                }
+                if (sumOfAliveNeighborNeighbors == 3) changes.add(neighborBit.getCoordinates());
+
             }
         }
 
-        for (Bit change : changes) {
-            change.flip();
+        for (Coordinate change : changes) {
+            flipBit(change);
         }
+    }
+
+    private Set<LitResponse> getNeighbors(Coordinate c) {
+        int x = c.getX();
+        int y = c.getY();
+        LitResponse topLeft = isLitUp(x-1, y-1);
+        LitResponse top = isLitUp(x, y-1);
+        LitResponse topRight = isLitUp(x+1, y-1);
+        LitResponse middleLeft = isLitUp(x-1, y);
+        LitResponse middleRight = isLitUp(x+1, y);
+        LitResponse bottomLeft = isLitUp(x-1, y+1);
+        LitResponse bottom = isLitUp(x, y+1);
+        LitResponse bottomRight = isLitUp(x+1, y+1);
+        return new HashSet<>(Arrays.asList(topLeft, top, topRight, middleLeft, middleRight, bottomLeft, bottom, bottomRight));
+    }
+
+    public int getOffsetX() {
+        return offsetX;
+    }
+
+    public int getOffsetY() {
+        return offsetY;
+    }
+
+    public void setOffsetX(int offsetX) {
+        this.offsetX = offsetX;
+    }
+
+    public void setOffsetY(int offsetY) {
+        this.offsetY = offsetY;
     }
 }
