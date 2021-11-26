@@ -69,14 +69,12 @@ public class GameCanvasMouseAdapter extends MouseInputAdapter {
 
         int finalRotationAmount = rotation * -1;
 
-        System.out.println(new Dimension((int) (this.canvas.getBitSize().getWidth() + finalRotationAmount),
-                (int) (this.canvas.getBitSize().getHeight() + finalRotationAmount)));
+
         this.canvas.setBitSize(new Dimension((int) (this.canvas.getBitSize().getWidth() + finalRotationAmount),
                 (int) (this.canvas.getBitSize().getHeight() + finalRotationAmount)), false);
 
         // google maps zoom with mouse position effect now
         // NVM THIS IS TOO HARD
-
 
         this.canvas.repaint();
     }
