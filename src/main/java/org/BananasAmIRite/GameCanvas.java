@@ -147,7 +147,7 @@ public class GameCanvas extends Canvas {
 
 
     public final void runGeneration() {
-        List<Coordinate> changes = new ArrayList<>();
+        Set<Coordinate> changes = new HashSet<>();
 
         for (Coordinate litBit : this.litUpPoints) {
             Set<LitResponse> neighbors = getNeighbors(litBit);
